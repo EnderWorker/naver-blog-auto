@@ -17,6 +17,17 @@ def _get_exe_dir():
     return os.path.abspath(".")
 
 
+def _set_playwright_browsers_path():
+    """
+    exe 모드에서 Playwright가 시스템에 설치된 Chromium을 찾도록
+    PLAYWRIGHT_BROWSERS_PATH 환경변수를 설정한다.
+    """
+    if getattr(sys, 'frozen', False):
+        localappdata = os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))
+        browsers_path = os.path.join(localappdata, 'ms-playwright')
+        os.environ['PLAYWRIGHT_BROWSERS_PATH'] = browsers_path
+
+
 def launch_browser():
     """
     Playwright Chromium을 persistent context로 실행한다.
@@ -24,6 +35,7 @@ def launch_browser():
     """
     global _playwright
 
+    _set_playwright_browsers_path()
     user_data_dir = os.path.join(_get_exe_dir(), "browser_data")
     os.makedirs(user_data_dir, exist_ok=True)
 
@@ -41,7 +53,7 @@ def launch_browser():
     return context, page
 
 
-def wait_for_login(page):
+def wait_for_login(_page):
     """네이버 로그인을 사용자에게 안내하고 Enter 입력을 대기한다."""
     print("\n🔑 네이버에 로그인한 후 Enter를 누르세요...")
     input()
