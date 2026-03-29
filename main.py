@@ -1,16 +1,39 @@
 """네이버 블로그 자동 포스팅 도구 — 메인 엔트리포인트."""
 
-import os
+import traceback
 
-from config import BLOG_ID, HTML_FILE_PATH, get_resource_path
-from credentials import LOGIN_ID, LOGIN_PW
-from parser.html_parser import parse_html
-from editor.browser import launch_browser, auto_login, navigate_to_editor, close_browser
-from editor.html_builder import blocks_to_editor_html
-from editor.injector import inject_title, inject_body_html, verify_injection
+
+def _start_esc_listener():
+    """백그라운드 스레드에서 ESC 키를 감지하여 메인 스레드를 중단한다."""
+    import msvcrt
+    import threading
+    import _thread
+    import time
+
+    def _listen():
+        while True:
+            if msvcrt.kbhit():
+                key = msvcrt.getch()
+                if key == b'\x1b':  # ESC
+                    print("\n\n⛔ ESC 키가 감지되었습니다. 프로그램을 종료합니다...")
+                    _thread.interrupt_main()
+                    return
+            time.sleep(0.05)
+
+    threading.Thread(target=_listen, daemon=True).start()
 
 
 def main():
+    # ── 모든 import를 함수 안으로 이동 ──
+    # import 실패 시에도 finally 블록의 input()이 실행되도록 보장한다.
+    import os
+    from config import BLOG_ID, HTML_FILE_PATH, get_resource_path
+    from credentials import LOGIN_ID, LOGIN_PW
+    from parser.html_parser import parse_html
+    from editor.browser import launch_browser, auto_login, navigate_to_editor, close_browser
+    from editor.html_builder import blocks_to_editor_html
+    from editor.injector import inject_title, inject_body_html, verify_injection
+
     print("=" * 50)
     print("  네이버 블로그 자동 포스팅 도구 v2.0")
     print(f"  블로그: {BLOG_ID}")
@@ -94,28 +117,7 @@ def main():
     close_browser(context)
 
 
-def _start_esc_listener():
-    """백그라운드 스레드에서 ESC 키를 감지하여 메인 스레드를 중단한다."""
-    import msvcrt
-    import threading
-    import _thread
-    import time
-
-    def _listen():
-        while True:
-            if msvcrt.kbhit():
-                key = msvcrt.getch()
-                if key == b'\x1b':  # ESC
-                    print("\n\n⛔ ESC 키가 감지되었습니다. 프로그램을 종료합니다...")
-                    _thread.interrupt_main()
-                    return
-            time.sleep(0.05)
-
-    threading.Thread(target=_listen, daemon=True).start()
-
-
 if __name__ == "__main__":
-    import traceback
     _start_esc_listener()
     try:
         main()
