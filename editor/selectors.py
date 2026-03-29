@@ -27,6 +27,12 @@ TOOLBAR_DIVIDER_CANDIDATES = (
     'button[data-type="horizontalLine"]',
     '.se-toolbar-item-horizontalLine button',
     'button[class*="horizontalLine"]',
+    'button[aria-label="수평선"]',
+    'button[aria-label*="수평선"]',
+    'button[title="수평선"]',
+    'button[title*="수평선"]',
+    'button[aria-label="구분선"]',
+    'button[aria-label*="구분선"]',
 )
 
 TOOLBAR_BOLD_CANDIDATES = (
@@ -40,6 +46,11 @@ TOOLBAR_FONT_SIZE_CANDIDATES = (
     ".se-toolbar-item-font-size button",
     'button[class*="text-size"]',
     'button[class*="fontSize"]',
+    'button[class*="textSize"]',
+    '.se-toolbar-item-textSize button',
+    'button[aria-label*="글자 크기"]',
+    'button[aria-label*="크기"]',
+    'button[aria-label="텍스트 크기"]',
 )
 
 QUOTE_STYLE_PREFIX = ".se-quotation-style-"
@@ -107,3 +118,44 @@ def find_element(page, candidates, timeout=5000):
     raise Exception(
         f"요소를 찾을 수 없습니다. 시도한 셀렉터: {candidates}"
     )
+
+
+def dump_toolbar_buttons(page):
+    """
+    툴바 내 모든 버튼의 속성을 출력한다.
+    셀렉터 탐색 실패 시 자동으로 호출되어 올바른 셀렉터 확인에 사용한다.
+    """
+    try:
+        buttons = page.evaluate("""() => {
+            const all = document.querySelectorAll('button');
+            return Array.from(all)
+                .filter(b => {
+                    let el = b;
+                    while (el) {
+                        if (el.className && typeof el.className === 'string' &&
+                            (el.className.includes('toolbar') || el.className.includes('Toolbar'))) {
+                            return true;
+                        }
+                        el = el.parentElement;
+                    }
+                    return false;
+                })
+                .map(b => ({
+                    dataName:  b.getAttribute('data-name')  || '',
+                    dataType:  b.getAttribute('data-type')  || '',
+                    ariaLabel: b.getAttribute('aria-label') || '',
+                    title:     b.getAttribute('title')      || '',
+                    className: b.className.substring(0, 80),
+                }));
+        }""")
+        print("\n  ┌─ [DEBUG] 툴바 버튼 목록 ──────────────────────────────")
+        for b in buttons:
+            if any([b['dataName'], b['dataType'], b['ariaLabel'], b['title']]):
+                print(
+                    f"  │ data-name={b['dataName']!r:<22} "
+                    f"aria-label={b['ariaLabel']!r:<20} "
+                    f"title={b['title']!r}"
+                )
+        print("  └────────────────────────────────────────────────────\n")
+    except Exception as e:
+        print(f"  [DEBUG] 툴바 버튼 조회 실패: {e}")

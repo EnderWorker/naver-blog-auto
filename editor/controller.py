@@ -4,6 +4,7 @@ import re
 from config import ACTION_DELAY, BODY_SIZE, HEADING_SIZE, SUBHEADING_SIZE
 from editor.selectors import (
     find_element,
+    dump_toolbar_buttons,
     TITLE_INPUT_CANDIDATES,
     BODY_AREA_CANDIDATES,
     TOOLBAR_QUOTE_CANDIDATES,
@@ -239,7 +240,11 @@ def insert_divider(page, style="dot"):
     """구분선을 삽입한다."""
     click_body_area(page)
 
-    divider_btn = find_element(page, TOOLBAR_DIVIDER_CANDIDATES)
+    try:
+        divider_btn = find_element(page, TOOLBAR_DIVIDER_CANDIDATES)
+    except Exception:
+        dump_toolbar_buttons(page)
+        raise
     divider_btn.click()
     _delay(page, 500)
 
@@ -343,4 +348,6 @@ def apply_font_size(page, size):
             page.locator(f'text="{size}"').first.click()
         _delay(page, 200)
     except Exception as e:
+        if "요소를 찾을 수 없습니다" in str(e):
+            dump_toolbar_buttons(page)
         print(f"  ⚠️  글자 크기 변경 실패 ({size}px): {e}")
