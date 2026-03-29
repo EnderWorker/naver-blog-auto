@@ -2,9 +2,10 @@
 
 import os
 
-from config import BLOG_ID, NAVER_URL, HTML_FILE_PATH, get_resource_path
+from config import BLOG_ID, HTML_FILE_PATH, get_resource_path
+from credentials import LOGIN_ID, LOGIN_PW
 from parser.html_parser import parse_html
-from editor.browser import launch_browser, wait_for_login, navigate_to_editor, close_browser
+from editor.browser import launch_browser, auto_login, navigate_to_editor, close_browser
 from editor.html_builder import blocks_to_editor_html
 from editor.injector import inject_title, inject_body_html, verify_injection
 
@@ -19,10 +20,9 @@ def main():
     # ── 1단계: 브라우저 실행 ──
     print("\n🌐 브라우저를 실행합니다...")
     context, page = launch_browser()
-    page.goto(NAVER_URL, wait_until="domcontentloaded")
 
-    # ── 2단계: 로그인 대기 ──
-    wait_for_login(page)
+    # ── 2단계: 자동 로그인 ──
+    auto_login(page, LOGIN_ID, LOGIN_PW)
 
     # ── 3단계: 글쓰기 페이지 이동 ──
     print("📝 블로그 글쓰기 페이지로 이동합니다...")

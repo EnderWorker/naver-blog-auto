@@ -16,6 +16,9 @@ venv/
 # 원고 파일 (개인 콘텐츠)
 assets/원고.html
 
+# 로그인 정보 (절대 커밋하지 말 것)
+credentials.py
+
 # OS
 .DS_Store
 Thumbs.db

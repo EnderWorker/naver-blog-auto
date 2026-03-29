@@ -1,11 +1,12 @@
-"""브라우저 실행, 로그인 대기, 에디터 페이지 이동."""
+"""브라우저 실행, 자동 로그인, 에디터 페이지 이동."""
 
 import os
 import sys
 from playwright.sync_api import sync_playwright
-from config import LOAD_DELAY
-from editor.selectors import EDITOR_CONTAINER
+from config import LOAD_DELAY, ACTION_DELAY
 
+# 에디터 컨테이너 셀렉터 (selectors.py 제거 후 직접 정의)
+EDITOR_CONTAINER = ".se-documentTitle"
 
 _playwright = None
 
@@ -18,21 +19,14 @@ def _get_exe_dir():
 
 
 def _set_playwright_browsers_path():
-    """
-    exe 모드에서 Playwright가 시스템에 설치된 Chromium을 찾도록
-    PLAYWRIGHT_BROWSERS_PATH 환경변수를 설정한다.
-    """
+    """exe 모드에서 PLAYWRIGHT_BROWSERS_PATH를 시스템 설치 경로로 설정한다."""
     if getattr(sys, 'frozen', False):
         localappdata = os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))
-        browsers_path = os.path.join(localappdata, 'ms-playwright')
-        os.environ['PLAYWRIGHT_BROWSERS_PATH'] = browsers_path
+        os.environ['PLAYWRIGHT_BROWSERS_PATH'] = os.path.join(localappdata, 'ms-playwright')
 
 
 def launch_browser():
-    """
-    Playwright Chromium을 persistent context로 실행한다.
-    로그인 세션을 유지하기 위해 user_data_dir을 사용한다.
-    """
+    """Playwright Chromium을 persistent context로 실행한다."""
     global _playwright
 
     _set_playwright_browsers_path()
@@ -53,33 +47,66 @@ def launch_browser():
     return context, page
 
 
-def wait_for_login(_page):
-    """네이버 로그인을 사용자에게 안내하고 Enter 입력을 대기한다."""
-    print("\n🔑 네이버에 로그인한 후 Enter를 누르세요...")
-    input()
+def auto_login(page, login_id, login_pw):
+    """
+    네이버 로그인 페이지에서 ID/PW를 자동 입력하여 로그인한다.
+    로그인 성공 시 True, 추가 인증이 필요한 경우 False를 반환한다.
+    """
+    print("\n🔑 네이버 자동 로그인을 시도합니다...")
+
+    login_url = "https://nid.naver.com/nidlogin.login?mode=form&url=https%3A%2F%2Fwww.naver.com%2F"
+    page.goto(login_url, wait_until="domcontentloaded")
+    page.wait_for_timeout(1000)
+
+    # ID 입력 (사람처럼 타이핑)
+    page.click("#id")
+    page.wait_for_timeout(300)
+    page.keyboard.type(login_id, delay=60)
+    page.wait_for_timeout(300)
+
+    # PW 입력
+    page.click("#pw")
+    page.wait_for_timeout(300)
+    page.keyboard.type(login_pw, delay=60)
+    page.wait_for_timeout(500)
+
+    # 로그인 버튼 클릭
+    page.click(".btn_login")
+    page.wait_for_timeout(2000)
+
+    current_url = page.url
+
+    # 추가 인증 페이지 감지 (CAPTCHA, 2차 인증 등)
+    if any(k in current_url for k in ("nidlogin", "nid.naver.com/user2", "captcha")):
+        print("\n⚠️  추가 인증이 필요합니다. 브라우저에서 직접 인증을 완료한 후 Enter를 누르세요...")
+        input()
+
+        current_url = page.url
+        if "nidlogin" in current_url:
+            raise Exception("로그인에 실패했습니다. 브라우저 상태를 확인하세요.")
+
+    print("   ✅ 로그인 완료")
+    page.wait_for_timeout(ACTION_DELAY)
 
 
 def navigate_to_editor(page, blog_id):
     """블로그 글쓰기 페이지로 이동하고 에디터 로딩을 대기한다."""
     url = f"https://blog.naver.com/{blog_id}/postwrite"
 
-    # 네이버가 로그인 페이지로 리다이렉트하면 Playwright가 "interrupted" 에러를 발생시키므로 흡수한다.
     try:
         page.goto(url, wait_until="domcontentloaded")
     except Exception:
         pass
 
-    # 로그인 페이지로 빠진 경우 명확한 안내와 함께 재시도
+    # 로그인 페이지로 빠진 경우
     if "nidlogin" in page.url:
-        print("\n⚠️  로그인 세션이 만료되었거나 로그인이 완료되지 않았습니다.")
-        print("   브라우저에서 네이버 로그인을 완료한 후 Enter를 누르세요...")
+        print("\n⚠️  로그인 세션이 만료되었습니다. 브라우저에서 로그인 후 Enter를 누르세요...")
         input()
         try:
             page.goto(url, wait_until="domcontentloaded")
         except Exception:
             pass
 
-    # 재시도 후에도 로그인 페이지면 에러 발생
     if "nidlogin" in page.url:
         raise Exception(
             f"로그인에 실패했습니다. 현재 URL: {page.url}\n"
