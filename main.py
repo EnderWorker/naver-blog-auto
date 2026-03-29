@@ -100,10 +100,17 @@ def main():
     print(f"🖼️  이미지 삽입 필요 위치: {image_count}곳")
     print("👉 이미지 업로드 / 카테고리 / 태그 / 발행을 직접 진행하세요.")
     print("=" * 50)
-    input("\n종료하려면 Enter를 누르세요...")
-
     close_browser(context)
 
 
 if __name__ == "__main__":
-    main()
+    import traceback
+    try:
+        main()
+    except Exception:
+        print("\n" + "=" * 50)
+        print("❌ 오류가 발생하여 프로그램이 종료되었습니다.")
+        print("=" * 50)
+        traceback.print_exc()
+    finally:
+        input("\n종료하려면 Enter를 누르세요...")
