@@ -103,10 +103,33 @@ def main():
     close_browser(context)
 
 
+def _start_esc_listener():
+    """백그라운드 스레드에서 ESC 키를 감지하여 메인 스레드를 중단한다."""
+    import msvcrt
+    import threading
+    import _thread
+    import time
+
+    def _listen():
+        while True:
+            if msvcrt.kbhit():
+                key = msvcrt.getch()
+                if key == b'\x1b':  # ESC
+                    print("\n\n⛔ ESC 키가 감지되었습니다. 프로그램을 종료합니다...")
+                    _thread.interrupt_main()
+                    return
+            time.sleep(0.05)
+
+    threading.Thread(target=_listen, daemon=True).start()
+
+
 if __name__ == "__main__":
     import traceback
+    _start_esc_listener()
     try:
         main()
+    except KeyboardInterrupt:
+        print("\n⛔ 사용자에 의해 중단되었습니다.")
     except Exception:
         print("\n" + "=" * 50)
         print("❌ 오류가 발생하여 프로그램이 종료되었습니다.")
