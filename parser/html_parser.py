@@ -20,8 +20,8 @@ def _get_style(tag):
 
 
 def _extract_formatting(tag):
-    """태그 내부의 bold/color/size 서식 정보를 추출한다."""
-    formatting = []
+    """태그 내부의 bold/color/size 서식 정보를 추출한다. 동일 텍스트는 병합."""
+    raw = []
     for child in tag.descendants:
         if not isinstance(child, Tag):
             continue
@@ -29,20 +29,34 @@ def _extract_formatting(tag):
         if not text:
             continue
         if child.name in ("b", "strong"):
-            formatting.append({"type": "bold", "text": text})
+            raw.append({"type": "bold", "text": text})
         elif child.name == "span":
             style = _get_style(child)
             if "color" in style:
-                formatting.append({"type": "color", "text": text, "color": style["color"]})
+                raw.append({"type": "color", "text": text, "color": style["color"]})
             if "font-size" in style:
                 size_str = style["font-size"].replace("px", "").strip()
                 try:
-                    formatting.append({"type": "size", "text": text, "size": int(size_str)})
+                    raw.append({"type": "size", "text": text, "size": int(size_str)})
                 except ValueError:
                     pass
             if "font-weight" in style and style["font-weight"] == "bold":
-                formatting.append({"type": "bold", "text": text})
-    return formatting
+                raw.append({"type": "bold", "text": text})
+
+    # 동일 텍스트에 대한 서식을 병합하여 반환
+    merged = {}
+    for f in raw:
+        ft = f["text"]
+        if ft not in merged:
+            merged[ft] = []
+        # 중복 type+text 조합은 건너뛴다
+        if not any(existing["type"] == f["type"] and existing["text"] == ft for existing in merged[ft]):
+            merged[ft].append(f)
+
+    result = []
+    for entries in merged.values():
+        result.extend(entries)
+    return result
 
 
 def _inner_text(tag):
@@ -133,7 +147,7 @@ def _is_checklist_box(tag):
     style = _get_style(tag)
     bg = style.get("background", "")
     text = tag.get_text()
-    return "#f5f5f5" in bg and ("✓" in text or "✔" in text)
+    return "#f5f5f5" in bg and any(c in text for c in ("✓", "✔", "✅", "☑", "✗"))
 
 
 def _is_summary_box(tag):

@@ -1,4 +1,4 @@
-from .browser import launch_browser, wait_for_login, navigate_to_editor
+from .browser import launch_browser, wait_for_login, navigate_to_editor, close_browser
 from .controller import (
     set_title,
     click_body_area,
@@ -14,6 +14,7 @@ __all__ = [
     "launch_browser",
     "wait_for_login",
     "navigate_to_editor",
+    "close_browser",
     "set_title",
     "click_body_area",
     "insert_text",

@@ -23,7 +23,7 @@ LOAD_DELAY = 2000
 
 
 def get_resource_path(relative_path):
-    """PyInstaller onefile 모드에서 리소스 경로를 올바르게 반환한다."""
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, relative_path)
+    """리소스 경로를 반환한다. exe 모드에서는 실행 파일 위치 기준으로 탐색한다."""
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), relative_path)
     return os.path.join(os.path.abspath('.'), relative_path)

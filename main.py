@@ -1,13 +1,9 @@
 """네이버 블로그 자동 포스팅 도구 — 메인 엔트리포인트."""
 
-import sys
-import os
-
-# PyInstaller onefile 모드에서 올바른 작업 디렉토리 설정
-if hasattr(sys, '_MEIPASS'):
-    os.chdir(sys._MEIPASS)
-
-from config import BLOG_ID, NAVER_URL, ACTION_DELAY, QUOTE_STYLE, DIVIDER_STYLE, get_resource_path
+from config import (
+    BLOG_ID, NAVER_URL, ACTION_DELAY, QUOTE_STYLE,
+    DIVIDER_STYLE, HTML_FILE_PATH, get_resource_path,
+)
 from parser.html_parser import parse_html
 from editor.browser import launch_browser, wait_for_login, navigate_to_editor, close_browser
 from editor.controller import (
@@ -41,7 +37,7 @@ def main():
 
     # 4단계: HTML 파싱
     print("📄 원고 파일을 분석합니다...")
-    html_path = get_resource_path("assets/원고.html")
+    html_path = get_resource_path(HTML_FILE_PATH)
     blocks = parse_html(html_path)
     print(f"   → 총 {len(blocks)}개 블록 감지")
 

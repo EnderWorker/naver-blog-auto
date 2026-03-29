@@ -1,26 +1,30 @@
 """브라우저 실행, 로그인 대기, 에디터 페이지 이동."""
 
 import os
+import sys
 from playwright.sync_api import sync_playwright
 from config import LOAD_DELAY
 from editor.selectors import EDITOR_CONTAINER
 
 
 _playwright = None
-_browser = None
+
+
+def _get_exe_dir():
+    """exe 실행 파일이 위치한 디렉토리를 반환한다."""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.abspath(".")
 
 
 def launch_browser():
     """
     Playwright Chromium을 persistent context로 실행한다.
     로그인 세션을 유지하기 위해 user_data_dir을 사용한다.
-
-    Returns:
-        tuple: (browser_context, page)
     """
-    global _playwright, _browser
+    global _playwright
 
-    user_data_dir = os.path.join(os.path.abspath("."), "browser_data")
+    user_data_dir = os.path.join(_get_exe_dir(), "browser_data")
     os.makedirs(user_data_dir, exist_ok=True)
 
     _playwright = sync_playwright().start()
@@ -44,17 +48,9 @@ def wait_for_login(page):
 
 
 def navigate_to_editor(page, blog_id):
-    """
-    블로그 글쓰기 페이지로 이동하고 에디터 로딩을 대기한다.
-
-    Args:
-        page: Playwright Page 객체
-        blog_id: 네이버 블로그 ID
-    """
+    """블로그 글쓰기 페이지로 이동하고 에디터 로딩을 대기한다."""
     url = f"https://blog.naver.com/{blog_id}/postwrite"
     page.goto(url, wait_until="domcontentloaded")
-
-    # 에디터 제목 영역이 나타날 때까지 대기 (최대 30초)
     page.wait_for_selector(EDITOR_CONTAINER, timeout=30000)
     page.wait_for_timeout(LOAD_DELAY)
 
