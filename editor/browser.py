@@ -62,7 +62,30 @@ def wait_for_login(_page):
 def navigate_to_editor(page, blog_id):
     """블로그 글쓰기 페이지로 이동하고 에디터 로딩을 대기한다."""
     url = f"https://blog.naver.com/{blog_id}/postwrite"
-    page.goto(url, wait_until="domcontentloaded")
+
+    # 네이버가 로그인 페이지로 리다이렉트하면 Playwright가 "interrupted" 에러를 발생시키므로 흡수한다.
+    try:
+        page.goto(url, wait_until="domcontentloaded")
+    except Exception:
+        pass
+
+    # 로그인 페이지로 빠진 경우 명확한 안내와 함께 재시도
+    if "nidlogin" in page.url:
+        print("\n⚠️  로그인 세션이 만료되었거나 로그인이 완료되지 않았습니다.")
+        print("   브라우저에서 네이버 로그인을 완료한 후 Enter를 누르세요...")
+        input()
+        try:
+            page.goto(url, wait_until="domcontentloaded")
+        except Exception:
+            pass
+
+    # 재시도 후에도 로그인 페이지면 에러 발생
+    if "nidlogin" in page.url:
+        raise Exception(
+            f"로그인에 실패했습니다. 현재 URL: {page.url}\n"
+            "브라우저에서 직접 네이버에 로그인한 뒤 프로그램을 다시 실행하세요."
+        )
+
     page.wait_for_selector(EDITOR_CONTAINER, timeout=30000)
     page.wait_for_timeout(LOAD_DELAY)
 
