@@ -1,0 +1,21 @@
+# 브라우저 세션 데이터 (로그인 정보 포함)
+browser_data/
+
+# PyInstaller 빌드 산출물
+dist/
+build/
+*.spec
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# 원고 파일 (개인 콘텐츠)
+assets/원고.html
+
+# OS
+.DS_Store
+Thumbs.db
