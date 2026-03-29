@@ -1,26 +1,14 @@
 from .browser import launch_browser, wait_for_login, navigate_to_editor, close_browser
-from .controller import (
-    set_title,
-    click_body_area,
-    insert_text,
-    insert_quote,
-    insert_divider,
-    insert_heading,
-    insert_spacing,
-    apply_font_size,
-)
+from .html_builder import blocks_to_editor_html
+from .injector import inject_title, inject_body_html, verify_injection
 
 __all__ = [
     "launch_browser",
     "wait_for_login",
     "navigate_to_editor",
     "close_browser",
-    "set_title",
-    "click_body_area",
-    "insert_text",
-    "insert_quote",
-    "insert_divider",
-    "insert_heading",
-    "insert_spacing",
-    "apply_font_size",
+    "blocks_to_editor_html",
+    "inject_title",
+    "inject_body_html",
+    "verify_injection",
 ]

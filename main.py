@@ -1,105 +1,96 @@
 """네이버 블로그 자동 포스팅 도구 — 메인 엔트리포인트."""
 
-from config import (
-    BLOG_ID, NAVER_URL, ACTION_DELAY, QUOTE_STYLE,
-    DIVIDER_STYLE, HTML_FILE_PATH, get_resource_path,
-)
+import os
+
+from config import BLOG_ID, NAVER_URL, HTML_FILE_PATH, get_resource_path
 from parser.html_parser import parse_html
 from editor.browser import launch_browser, wait_for_login, navigate_to_editor, close_browser
-from editor.controller import (
-    set_title,
-    insert_text,
-    insert_quote,
-    insert_divider,
-    insert_heading,
-    insert_spacing,
-)
+from editor.html_builder import blocks_to_editor_html
+from editor.injector import inject_title, inject_body_html, verify_injection
 
 
 def main():
     print("=" * 50)
-    print("  네이버 블로그 자동 포스팅 도구")
+    print("  네이버 블로그 자동 포스팅 도구 v2.0")
     print(f"  블로그: {BLOG_ID}")
+    print("  방식: DOM 직접 주입")
     print("=" * 50)
 
-    # 1단계: 브라우저 실행
+    # ── 1단계: 브라우저 실행 ──
     print("\n🌐 브라우저를 실행합니다...")
     context, page = launch_browser()
     page.goto(NAVER_URL, wait_until="domcontentloaded")
 
-    # 2단계: 로그인 대기
+    # ── 2단계: 로그인 대기 ──
     wait_for_login(page)
 
-    # 3단계: 글쓰기 페이지 이동
+    # ── 3단계: 글쓰기 페이지 이동 ──
     print("📝 블로그 글쓰기 페이지로 이동합니다...")
     navigate_to_editor(page, BLOG_ID)
-    print("✅ 에디터 로딩 완료")
+    print("✅ 에디터 로딩 완료\n")
 
-    # 4단계: HTML 파싱
+    # ── 4단계: HTML 파싱 ──
     print("📄 원고 파일을 분석합니다...")
     html_path = get_resource_path(HTML_FILE_PATH)
+
+    if not os.path.exists(html_path):
+        raise FileNotFoundError(f"원고 파일을 찾을 수 없습니다: {html_path}")
+
     blocks = parse_html(html_path)
     print(f"   → 총 {len(blocks)}개 블록 감지")
 
-    # 5단계: 에디터에 순차 입력
-    print("\n🚀 에디터에 입력을 시작합니다...\n")
-    image_count = 0
-    total = len(blocks)
+    type_counts = {}
+    for b in blocks:
+        t = b["type"]
+        type_counts[t] = type_counts.get(t, 0) + 1
+    for t, c in type_counts.items():
+        print(f"   → {t}: {c}개")
 
-    for i, block in enumerate(blocks):
-        block_type = block["type"]
+    # ── 5단계: 에디터 HTML 변환 ──
+    print("\n🔨 에디터 HTML로 변환합니다...")
+    title_text, body_html, image_positions = blocks_to_editor_html(blocks)
+    title_preview = (title_text[:30] + "...") if len(title_text) > 30 else title_text
+    print(f"   → 제목: {title_preview}")
+    print(f"   → 본문 HTML: {len(body_html):,} bytes")
+    print(f"   → 이미지 위치: {len(image_positions)}곳")
 
-        try:
-            if block_type == "title":
-                print(f"  [{i+1}/{total}] 📌 제목 입력")
-                set_title(page, block["text"])
+    # ── 6단계: 제목 입력 ──
+    if title_text:
+        print("\n📌 제목을 입력합니다...")
+        inject_title(page, title_text)
+        print("   ✅ 제목 입력 완료")
 
-            elif block_type == "spacing":
-                insert_spacing(page)
+    # ── 7단계: 본문 DOM 주입 ──
+    print("\n🚀 본문을 에디터에 주입합니다...")
+    result = inject_body_html(page, body_html)
+    print(f"   ✅ DOM 주입 완료 (결과: {result})")
 
-            elif block_type == "text":
-                print(f"  [{i+1}/{total}] 📝 본문 텍스트")
-                insert_text(page, block["text"], block.get("formatting"))
+    # ── 8단계: 주입 검증 ──
+    print("\n🔍 주입 결과를 검증합니다...")
+    verification = verify_injection(page)
+    if "error" in verification:
+        print(f"   ⚠️  검증 실패: {verification['error']}")
+    else:
+        print(f"   → 총 컴포넌트: {verification['total']}개")
+        for comp_type, count in verification.get("types", {}).items():
+            print(f"   → {comp_type}: {count}개")
 
-            elif block_type in ("quote_left", "highlight_box", "stat_box",
-                                "info_box", "summary_box"):
-                print(f"  [{i+1}/{total}] 💬 인용구 ({block_type})")
-                insert_quote(page, block["text"], style=QUOTE_STYLE,
-                             formatting=block.get("formatting"))
+    # ── 9단계: 이미지 위치 안내 ──
+    if image_positions:
+        print(f"\n🖼️  이미지 삽입이 필요한 위치 ({len(image_positions)}곳):")
+        for img in image_positions:
+            desc = img["description"][:50]
+            print(f"   #{img['index']}: {desc}...")
 
-            elif block_type == "checklist_box":
-                print(f"  [{i+1}/{total}] ✅ 체크리스트 (인용구 처리)")
-                insert_quote(page, block["text"], style=QUOTE_STYLE,
-                             formatting=block.get("formatting"))
-
-            elif block_type == "divider":
-                print(f"  [{i+1}/{total}] ── 구분선")
-                insert_divider(page, style=DIVIDER_STYLE)
-
-            elif block_type == "heading":
-                print(f"  [{i+1}/{total}] 📋 대제목: {block['text'][:20]}...")
-                insert_heading(page, block["text"], level="h3")
-
-            elif block_type == "subheading":
-                print(f"  [{i+1}/{total}] 📎 소제목: {block['text'][:20]}...")
-                insert_heading(page, block["text"], level="h4")
-
-            elif block_type == "image_placeholder":
-                image_count += 1
-                print(f"  [{i+1}/{total}] 🖼️  이미지 #{image_count} 스킵: {block['text'][:30]}...")
-
-        except Exception as e:
-            print(f"  ⚠️  [{i+1}/{total}] {block_type} 입력 실패: {e}")
-            continue
-
-        page.wait_for_timeout(ACTION_DELAY)
-
-    # 6단계: 완료
+    # ── 완료 ──
     print("\n" + "=" * 50)
     print("✅ 원고 입력이 완료되었습니다!")
-    print(f"🖼️  이미지 삽입 필요 위치: {image_count}곳")
-    print("👉 이미지 업로드 / 카테고리 / 태그 / 발행을 직접 진행하세요.")
+    print("👉 아래 작업을 직접 진행하세요:")
+    print("   1. [이미지 삽입 위치] 텍스트를 찾아 실제 이미지로 교체")
+    print("   2. 카테고리 / 태그 설정")
+    print("   3. 발행")
     print("=" * 50)
+
     close_browser(context)
 
 
